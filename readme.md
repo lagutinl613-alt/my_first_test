@@ -16,6 +16,8 @@ Set environment variables `GEMINI_API_KEY` and optionally `IMAGEN_API_KEY`.
 npm start
 ```
 
+Open <http://localhost:3000> in your browser to use the simple web interface.
+
 ## API Endpoints
 
 - `POST /api/story` `{ prompt, title? }`

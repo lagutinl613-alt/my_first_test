@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Story Game</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <h1>Interactive Story Game</h1>
+  <div id="menu">
+    <h2>Your Stories</h2>
+    <ul id="story-list"></ul>
+    <h3>New Story</h3>
+    <input id="new-title" placeholder="Title (optional)" />
+    <textarea id="new-prompt" placeholder="Describe your adventure"></textarea>
+    <button id="create-story">Create</button>
+  </div>
+
+  <div id="game" style="display:none;">
+    <button id="back">&larr; Back</button>
+    <h2 id="story-title"></h2>
+    <div id="entries"></div>
+    <textarea id="action" placeholder="Your next action"></textarea>
+    <button id="send-action">Send</button>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

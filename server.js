@@ -5,6 +5,7 @@ const { generateImage } = require('./services/imagen');
 
 const app = express();
 app.use(express.json());
+app.use(express.static('public'));
 
 const systemPrompt = { role: 'system', content: 'Ты — интерактивный рассказчик.' };
 const stories = new Map();
