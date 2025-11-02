@@ -6,7 +6,8 @@ const gameState = {
     skillPoints: 0,
     inventory: {},
     skills: {},
-    selectedCards: new Set()
+    selectedCards: new Set(),
+    notifications: []
 };
 
 // Card Configuration
@@ -20,6 +21,19 @@ const CARD_CONFIG = {
 const PACK_COST = 50;
 const CARDS_PER_PACK = 5;
 const BASE_XP_REQUIREMENT = 100;
+
+// Skill Effects Configuration
+const SKILL_EFFECTS = {
+    pack_discount: 10,
+    better_cards_common_reduction: 10,
+    better_cards_rare_increase: 5,
+    better_cards_epic_increase: 3,
+    better_cards_legendary_increase: 2,
+    more_cards_count: 7,
+    increased_value_multiplier: 1.5,
+    xp_boost_multiplier: 1.25,
+    lucky_packs_chance: 0.2
+};
 
 // Card Names
 const CARD_NAMES = {
@@ -100,6 +114,28 @@ function setupEventListeners() {
     document.getElementById('deselect-all-btn').addEventListener('click', deselectAllCards);
 }
 
+// Show notification
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    // Trigger animation
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 10);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 3000);
+}
+
 // Get XP required for next level
 function getXPRequirement(level) {
     return Math.floor(BASE_XP_REQUIREMENT * Math.pow(1.5, level - 1));
@@ -110,7 +146,7 @@ function openPack() {
     const packCost = getPackCost();
     
     if (gameState.currency < packCost) {
-        alert('Not enough currency to open a pack!');
+        showNotification('Not enough currency to open a pack!', 'error');
         return;
     }
 
@@ -124,7 +160,7 @@ function openPack() {
     }
 
     // Add bonus card with lucky packs skill
-    if (gameState.skills.lucky_packs && Math.random() < 0.2) {
+    if (gameState.skills.lucky_packs && Math.random() < SKILL_EFFECTS.lucky_packs_chance) {
         cards.push(generateCard());
     }
 
@@ -143,14 +179,14 @@ function openPack() {
 function getPackCost() {
     let cost = PACK_COST;
     if (gameState.skills.pack_discount) {
-        cost -= 10;
+        cost -= SKILL_EFFECTS.pack_discount;
     }
     return Math.max(cost, 10);
 }
 
 // Get cards per pack with skills
 function getCardsPerPack() {
-    return gameState.skills.more_cards ? 7 : CARDS_PER_PACK;
+    return gameState.skills.more_cards ? SKILL_EFFECTS.more_cards_count : CARDS_PER_PACK;
 }
 
 // Generate a random card
@@ -160,10 +196,10 @@ function generateCard() {
 
     // Adjust weights with better_cards skill
     if (gameState.skills.better_cards) {
-        weights[0] -= 10; // common
-        weights[1] += 5;  // rare
-        weights[2] += 3;  // epic
-        weights[3] += 2;  // legendary
+        weights[0] -= SKILL_EFFECTS.better_cards_common_reduction; // common
+        weights[1] += SKILL_EFFECTS.better_cards_rare_increase;  // rare
+        weights[2] += SKILL_EFFECTS.better_cards_epic_increase;  // epic
+        weights[3] += SKILL_EFFECTS.better_cards_legendary_increase;  // legendary
     }
 
     const totalWeight = weights.reduce((sum, w) => sum + w, 0);
@@ -184,7 +220,7 @@ function generateCard() {
 
     let xp = config.xp;
     if (gameState.skills.xp_boost) {
-        xp = Math.floor(xp * 1.25);
+        xp = Math.floor(xp * SKILL_EFFECTS.xp_boost_multiplier);
     }
 
     return {
@@ -247,7 +283,7 @@ function addXP(amount) {
 
 // Show level up notification
 function showLevelUpNotification() {
-    alert(`Level Up! You are now level ${gameState.level}. You gained 1 skill point!`);
+    showNotification(`Level Up! You are now level ${gameState.level}. You gained 1 skill point!`, 'success');
 }
 
 // Select all cards
@@ -268,7 +304,7 @@ function deselectAllCards() {
 // Sell selected cards
 function sellSelectedCards() {
     if (gameState.selectedCards.size === 0) {
-        alert('No cards selected!');
+        showNotification('No cards selected!', 'error');
         return;
     }
 
@@ -280,7 +316,7 @@ function sellSelectedCards() {
         if (card) {
             let value = card.value;
             if (gameState.skills.increased_value) {
-                value = Math.floor(value * 1.5);
+                value = Math.floor(value * SKILL_EFFECTS.increased_value_multiplier);
             }
             totalValue += value * card.count;
             cardsToRemove.push(key);
@@ -294,6 +330,7 @@ function sellSelectedCards() {
     gameState.currency += totalValue;
     gameState.selectedCards.clear();
 
+    showNotification(`Sold cards for ${totalValue} currency!`, 'success');
     updateUI();
     saveGame();
 }
@@ -315,18 +352,19 @@ function unlockSkill(skillId) {
     if (!skill) return;
     
     if (gameState.skills[skillId]) {
-        alert('Skill already unlocked!');
+        showNotification('Skill already unlocked!', 'error');
         return;
     }
 
     if (gameState.skillPoints < skill.cost) {
-        alert('Not enough skill points!');
+        showNotification('Not enough skill points!', 'error');
         return;
     }
 
     gameState.skillPoints -= skill.cost;
     gameState.skills[skillId] = true;
 
+    showNotification(`Unlocked: ${skill.name}!`, 'success');
     updateUI();
     renderSkillTree();
     saveGame();
@@ -387,9 +425,15 @@ function renderSkillTree() {
             <div class="skill-cost">Cost: ${skill.cost} SP</div>
             ${gameState.skills[skill.id] 
                 ? '<div class="skill-status">✓ Unlocked</div>'
-                : `<button class="btn btn-primary" onclick="unlockSkill('${skill.id}')">Unlock</button>`
+                : `<button class="btn btn-primary" data-skill-id="${skill.id}">Unlock</button>`
             }
         `;
+        
+        // Add event listener to unlock button if skill is not unlocked
+        if (!gameState.skills[skill.id]) {
+            const unlockBtn = skillDiv.querySelector('button');
+            unlockBtn.addEventListener('click', () => unlockSkill(skill.id));
+        }
         
         skillTreeDiv.appendChild(skillDiv);
     });
