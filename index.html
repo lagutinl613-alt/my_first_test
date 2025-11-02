@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card Collection Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header>
+            <h1>Card Collection Game</h1>
+            <div class="player-stats">
+                <div class="stat">
+                    <span class="stat-label">Currency:</span>
+                    <span id="currency" class="stat-value">100</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Level:</span>
+                    <span id="level" class="stat-value">1</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">XP:</span>
+                    <span id="xp" class="stat-value">0</span>
+                    <span class="stat-label">/</span>
+                    <span id="xp-needed" class="stat-value">100</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Skill Points:</span>
+                    <span id="skill-points" class="stat-value">0</span>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <div class="game-content">
+                <section class="section packs-section">
+                    <h2>Open Packs</h2>
+                    <div class="pack-container">
+                        <button id="open-pack-btn" class="btn btn-primary">Open Pack (50 Currency)</button>
+                        <div id="pack-result" class="pack-result"></div>
+                    </div>
+                </section>
+
+                <section class="section inventory-section">
+                    <h2>Inventory</h2>
+                    <div class="inventory-controls">
+                        <button id="sell-selected-btn" class="btn btn-secondary">Sell Selected Cards</button>
+                        <button id="select-all-btn" class="btn btn-secondary">Select All</button>
+                        <button id="deselect-all-btn" class="btn btn-secondary">Deselect All</button>
+                    </div>
+                    <div id="inventory" class="inventory-grid"></div>
+                </section>
+
+                <section class="section skill-tree-section">
+                    <h2>Skill Tree</h2>
+                    <div id="skill-tree" class="skill-tree"></div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
