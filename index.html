@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card Collection Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <header>
+            <h1>Card Collection Game</h1>
+            <div class="player-stats">
+                <div class="stat">
+                    <span class="stat-label">Currency:</span>
+                    <span id="currency" class="stat-value">100</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Level:</span>
+                    <span id="level" class="stat-value">1</span>
+                </div>
+                <div class="stat stat-with-bar">
+                    <div class="stat-text">
+                        <span class="stat-label">XP:</span>
+                        <span id="xp" class="stat-value">0</span>
+                        <span class="stat-label">/</span>
+                        <span id="xp-needed" class="stat-value">100</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="xp-bar" class="progress-fill"></div>
+                    </div>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Skill Points:</span>
+                    <span id="skill-points" class="stat-value">0</span>
+                </div>
+            </div>
+            <div class="stats-secondary">
+                <span id="total-cards">Total Cards: 0</span>
+                <span id="total-packs">Packs Opened: 0</span>
+                <span id="total-sold">Cards Sold: 0</span>
+            </div>
+        </header>
+
+        <main>
+            <div class="game-content">
+                <section class="section packs-section">
+                    <h2>Open Packs</h2>
+                    <div class="pack-container">
+                        <div class="pack-buttons">
+                            <button id="open-pack-btn" class="btn btn-primary">Open 1 Pack</button>
+                            <button id="open-5-packs-btn" class="btn btn-primary">Open 5 Packs</button>
+                            <button id="open-10-packs-btn" class="btn btn-primary">Open 10 Packs</button>
+                        </div>
+                        <div id="pack-result" class="pack-result"></div>
+                    </div>
+                </section>
+
+                <section class="section inventory-section">
+                    <h2>Inventory <span id="inventory-count" class="inventory-count">(0 cards)</span></h2>
+                    <div class="inventory-controls">
+                        <div class="control-group">
+                            <button id="sell-selected-btn" class="btn btn-secondary">Sell Selected</button>
+                            <button id="select-all-btn" class="btn btn-secondary">Select All</button>
+                            <button id="deselect-all-btn" class="btn btn-secondary">Deselect All</button>
+                        </div>
+                        <div class="control-group">
+                            <button id="select-common-btn" class="btn btn-small">Select Common</button>
+                            <button id="select-rare-btn" class="btn btn-small">Select Rare</button>
+                            <button id="select-epic-btn" class="btn btn-small">Select Epic</button>
+                            <button id="select-legendary-btn" class="btn btn-small">Select Legendary</button>
+                        </div>
+                        <div class="control-group">
+                            <label for="sort-select">Sort by:</label>
+                            <select id="sort-select" class="sort-dropdown">
+                                <option value="rarity">Rarity</option>
+                                <option value="name">Name</option>
+                                <option value="value">Value</option>
+                                <option value="quantity">Quantity</option>
+                            </select>
+                            <label for="filter-select">Filter:</label>
+                            <select id="filter-select" class="sort-dropdown">
+                                <option value="all">All Cards</option>
+                                <option value="common">Common</option>
+                                <option value="rare">Rare</option>
+                                <option value="epic">Epic</option>
+                                <option value="legendary">Legendary</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="inventory" class="inventory-grid"></div>
+                </section>
+
+                <section class="section skill-tree-section">
+                    <h2>Skill Tree</h2>
+                    <div id="skill-tree" class="skill-tree"></div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
