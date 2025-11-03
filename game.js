@@ -7,7 +7,15 @@ const gameState = {
     inventory: {},
     skills: {},
     selectedCards: new Set(),
-    notifications: []
+    notifications: [],
+    statistics: {
+        totalCardsCollected: 0,
+        packsOpened: 0,
+        cardsSold: 0,
+        totalCurrencyEarned: 0
+    },
+    sortBy: 'rarity',
+    filterBy: 'all'
 };
 
 // Card Configuration
@@ -108,10 +116,24 @@ function initGame() {
 
 // Setup Event Listeners
 function setupEventListeners() {
-    document.getElementById('open-pack-btn').addEventListener('click', openPack);
+    document.getElementById('open-pack-btn').addEventListener('click', () => openPacks(1));
+    document.getElementById('open-5-packs-btn').addEventListener('click', () => openPacks(5));
+    document.getElementById('open-10-packs-btn').addEventListener('click', () => openPacks(10));
     document.getElementById('sell-selected-btn').addEventListener('click', sellSelectedCards);
     document.getElementById('select-all-btn').addEventListener('click', selectAllCards);
     document.getElementById('deselect-all-btn').addEventListener('click', deselectAllCards);
+    document.getElementById('select-common-btn').addEventListener('click', () => selectByRarity('common'));
+    document.getElementById('select-rare-btn').addEventListener('click', () => selectByRarity('rare'));
+    document.getElementById('select-epic-btn').addEventListener('click', () => selectByRarity('epic'));
+    document.getElementById('select-legendary-btn').addEventListener('click', () => selectByRarity('legendary'));
+    document.getElementById('sort-select').addEventListener('change', (e) => {
+        gameState.sortBy = e.target.value;
+        renderInventory();
+    });
+    document.getElementById('filter-select').addEventListener('change', (e) => {
+        gameState.filterBy = e.target.value;
+        renderInventory();
+    });
 }
 
 // Show notification
@@ -141,34 +163,38 @@ function getXPRequirement(level) {
     return Math.floor(BASE_XP_REQUIREMENT * Math.pow(1.5, level - 1));
 }
 
-// Open a pack
-function openPack() {
+// Open packs (single or multiple)
+function openPacks(count = 1) {
     const packCost = getPackCost();
+    const totalCost = packCost * count;
     
-    if (gameState.currency < packCost) {
-        showNotification('Not enough currency to open a pack!', 'error');
+    if (gameState.currency < totalCost) {
+        showNotification(`Not enough currency! Need ${totalCost} for ${count} pack(s).`, 'error');
         return;
     }
 
-    gameState.currency -= packCost;
+    gameState.currency -= totalCost;
+    gameState.statistics.packsOpened += count;
     
-    const cardsInPack = getCardsPerPack();
-    const cards = [];
+    const allCards = [];
+    for (let p = 0; p < count; p++) {
+        const cardsInPack = getCardsPerPack();
+        for (let i = 0; i < cardsInPack; i++) {
+            allCards.push(generateCard());
+        }
 
-    for (let i = 0; i < cardsInPack; i++) {
-        cards.push(generateCard());
+        // Add bonus card with lucky packs skill
+        if (gameState.skills.lucky_packs && Math.random() < SKILL_EFFECTS.lucky_packs_chance) {
+            allCards.push(generateCard());
+        }
     }
 
-    // Add bonus card with lucky packs skill
-    if (gameState.skills.lucky_packs && Math.random() < SKILL_EFFECTS.lucky_packs_chance) {
-        cards.push(generateCard());
-    }
-
-    displayPackResults(cards);
+    displayPackResults(allCards, count);
     
-    cards.forEach(card => {
+    allCards.forEach(card => {
         addCardToInventory(card);
         addXP(card.xp);
+        gameState.statistics.totalCardsCollected++;
     });
 
     updateUI();
@@ -232,24 +258,43 @@ function generateCard() {
 }
 
 // Display pack results
-function displayPackResults(cards) {
+function displayPackResults(cards, packCount = 1) {
     const resultDiv = document.getElementById('pack-result');
-    resultDiv.innerHTML = '<h3>You got:</h3>';
+    resultDiv.innerHTML = `<h3>You opened ${packCount} pack(s) and got:</h3>`;
     
-    cards.forEach(card => {
-        const cardDiv = document.createElement('div');
-        cardDiv.className = `card card-${card.rarity}`;
-        cardDiv.innerHTML = `
-            <div class="card-name">${card.name}</div>
-            <div class="card-rarity">${card.rarity}</div>
-            <div class="card-xp">+${card.xp} XP</div>
-        `;
-        resultDiv.appendChild(cardDiv);
+    // Group cards by rarity for better display
+    const rarityGroups = { legendary: [], epic: [], rare: [], common: [] };
+    cards.forEach(card => rarityGroups[card.rarity].push(card));
+    
+    Object.entries(rarityGroups).forEach(([rarity, groupCards]) => {
+        if (groupCards.length > 0) {
+            groupCards.forEach(card => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = `card card-${card.rarity} card-appear`;
+                cardDiv.innerHTML = `
+                    <div class="card-name">${card.name}</div>
+                    <div class="card-rarity">${card.rarity}</div>
+                    <div class="card-xp">+${card.xp} XP</div>
+                `;
+                resultDiv.appendChild(cardDiv);
+            });
+        }
     });
+
+    // Show summary
+    const summary = document.createElement('div');
+    summary.className = 'pack-summary';
+    const totalXP = cards.reduce((sum, card) => sum + card.xp, 0);
+    summary.innerHTML = `<strong>Total: ${cards.length} cards, +${totalXP} XP</strong>`;
+    resultDiv.appendChild(summary);
 
     // Clear after 5 seconds
     setTimeout(() => {
-        resultDiv.innerHTML = '';
+        resultDiv.style.opacity = '0';
+        setTimeout(() => {
+            resultDiv.innerHTML = '';
+            resultDiv.style.opacity = '1';
+        }, 300);
     }, 5000);
 }
 
@@ -289,7 +334,8 @@ function showLevelUpNotification() {
 // Select all cards
 function selectAllCards() {
     gameState.selectedCards.clear();
-    Object.keys(gameState.inventory).forEach(key => {
+    const filteredCards = getFilteredCards();
+    filteredCards.forEach(([key]) => {
         gameState.selectedCards.add(key);
     });
     renderInventory();
@@ -301,6 +347,18 @@ function deselectAllCards() {
     renderInventory();
 }
 
+// Select cards by rarity
+function selectByRarity(rarity) {
+    gameState.selectedCards.clear();
+    Object.entries(gameState.inventory).forEach(([key, card]) => {
+        if (card.rarity === rarity) {
+            gameState.selectedCards.add(key);
+        }
+    });
+    renderInventory();
+    showNotification(`Selected all ${rarity} cards`, 'info');
+}
+
 // Sell selected cards
 function sellSelectedCards() {
     if (gameState.selectedCards.size === 0) {
@@ -309,6 +367,7 @@ function sellSelectedCards() {
     }
 
     let totalValue = 0;
+    let cardsSold = 0;
     const cardsToRemove = [];
 
     gameState.selectedCards.forEach(key => {
@@ -319,6 +378,7 @@ function sellSelectedCards() {
                 value = Math.floor(value * SKILL_EFFECTS.increased_value_multiplier);
             }
             totalValue += value * card.count;
+            cardsSold += card.count;
             cardsToRemove.push(key);
         }
     });
@@ -328,9 +388,11 @@ function sellSelectedCards() {
     });
 
     gameState.currency += totalValue;
+    gameState.statistics.cardsSold += cardsSold;
+    gameState.statistics.totalCurrencyEarned += totalValue;
     gameState.selectedCards.clear();
 
-    showNotification(`Sold cards for ${totalValue} currency!`, 'success');
+    showNotification(`Sold ${cardsSold} card(s) for ${totalValue} currency!`, 'success');
     updateUI();
     saveGame();
 }
@@ -343,6 +405,38 @@ function toggleCardSelection(key) {
         gameState.selectedCards.add(key);
     }
     renderInventory();
+}
+
+// Get filtered cards
+function getFilteredCards() {
+    let cards = Object.entries(gameState.inventory);
+    
+    // Apply filter
+    if (gameState.filterBy !== 'all') {
+        cards = cards.filter(([_, card]) => card.rarity === gameState.filterBy);
+    }
+    
+    // Apply sort
+    cards.sort((a, b) => {
+        const cardA = a[1];
+        const cardB = b[1];
+        
+        switch (gameState.sortBy) {
+            case 'rarity':
+                const rarityOrder = { legendary: 0, epic: 1, rare: 2, common: 3 };
+                return rarityOrder[cardA.rarity] - rarityOrder[cardB.rarity];
+            case 'name':
+                return cardA.name.localeCompare(cardB.name);
+            case 'value':
+                return cardB.value - cardA.value;
+            case 'quantity':
+                return cardB.count - cardA.count;
+            default:
+                return 0;
+        }
+    });
+    
+    return cards;
 }
 
 // Unlock skill
@@ -375,26 +469,30 @@ function renderInventory() {
     const inventoryDiv = document.getElementById('inventory');
     inventoryDiv.innerHTML = '';
 
-    const sortedCards = Object.entries(gameState.inventory).sort((a, b) => {
-        const rarityOrder = { legendary: 0, epic: 1, rare: 2, common: 3 };
-        return rarityOrder[a[1].rarity] - rarityOrder[b[1].rarity];
-    });
+    const sortedCards = getFilteredCards();
+    
+    // Update inventory count
+    const totalCards = Object.values(gameState.inventory).reduce((sum, card) => sum + card.count, 0);
+    document.getElementById('inventory-count').textContent = `(${totalCards} card${totalCards !== 1 ? 's' : ''})`;
 
     if (sortedCards.length === 0) {
-        inventoryDiv.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No cards yet. Open a pack to get started!</p>';
+        const message = gameState.filterBy === 'all' 
+            ? 'No cards yet. Open a pack to get started!'
+            : `No ${gameState.filterBy} cards in inventory.`;
+        inventoryDiv.innerHTML = `<p style="text-align: center; color: #666; padding: 20px; grid-column: 1 / -1;">${message}</p>`;
         return;
     }
 
     sortedCards.forEach(([key, card]) => {
         const cardDiv = document.createElement('div');
-        cardDiv.className = `card card-${card.rarity}`;
+        cardDiv.className = `card card-${card.rarity} card-inventory`;
         if (gameState.selectedCards.has(key)) {
             cardDiv.classList.add('selected');
         }
         
         let value = card.value;
         if (gameState.skills.increased_value) {
-            value = Math.floor(value * 1.5);
+            value = Math.floor(value * SKILL_EFFECTS.increased_value_multiplier);
         }
 
         cardDiv.innerHTML = `
@@ -444,13 +542,31 @@ function updateUI() {
     document.getElementById('currency').textContent = gameState.currency;
     document.getElementById('level').textContent = gameState.level;
     document.getElementById('xp').textContent = gameState.xp;
-    document.getElementById('xp-needed').textContent = getXPRequirement(gameState.level);
+    const xpNeeded = getXPRequirement(gameState.level);
+    document.getElementById('xp-needed').textContent = xpNeeded;
     document.getElementById('skill-points').textContent = gameState.skillPoints;
+    
+    // Update XP progress bar
+    const xpPercent = (gameState.xp / xpNeeded) * 100;
+    document.getElementById('xp-bar').style.width = `${xpPercent}%`;
+    
+    // Update statistics
+    document.getElementById('total-cards').textContent = `Total Cards: ${gameState.statistics.totalCardsCollected}`;
+    document.getElementById('total-packs').textContent = `Packs Opened: ${gameState.statistics.packsOpened}`;
+    document.getElementById('total-sold').textContent = `Cards Sold: ${gameState.statistics.cardsSold}`;
 
     const packCost = getPackCost();
     const packBtn = document.getElementById('open-pack-btn');
-    packBtn.textContent = `Open Pack (${packCost} Currency)`;
+    packBtn.textContent = `Open 1 Pack (${packCost})`;
     packBtn.disabled = gameState.currency < packCost;
+    
+    const pack5Btn = document.getElementById('open-5-packs-btn');
+    pack5Btn.textContent = `Open 5 Packs (${packCost * 5})`;
+    pack5Btn.disabled = gameState.currency < packCost * 5;
+    
+    const pack10Btn = document.getElementById('open-10-packs-btn');
+    pack10Btn.textContent = `Open 10 Packs (${packCost * 10})`;
+    pack10Btn.disabled = gameState.currency < packCost * 10;
 
     renderInventory();
 }
@@ -463,7 +579,8 @@ function saveGame() {
         level: gameState.level,
         skillPoints: gameState.skillPoints,
         inventory: gameState.inventory,
-        skills: gameState.skills
+        skills: gameState.skills,
+        statistics: gameState.statistics
     }));
 }
 
@@ -479,6 +596,12 @@ function loadGame() {
             gameState.skillPoints = data.skillPoints || 0;
             gameState.inventory = data.inventory || {};
             gameState.skills = data.skills || {};
+            gameState.statistics = data.statistics || {
+                totalCardsCollected: 0,
+                packsOpened: 0,
+                cardsSold: 0,
+                totalCurrencyEarned: 0
+            };
         } catch (e) {
             console.error('Failed to load save:', e);
         }
